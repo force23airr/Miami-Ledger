@@ -10,6 +10,7 @@ import {
 import ArticleCard from "@/components/ArticleCard";
 import ArticleCover from "@/components/ArticleCover";
 import Ticker from "@/components/Ticker";
+import ProjectsRail from "@/components/ProjectsRail";
 
 export default function Home() {
   const featured = getArticle(FEATURED_SLUG)!;
@@ -148,6 +149,8 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      <ProjectsRail />
 
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
         {beats.map((beat) => {

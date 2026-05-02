@@ -3,6 +3,7 @@ import { Inter, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Masthead from "@/components/Masthead";
 import Footer from "@/components/Footer";
+import AskLedger from "@/components/AskLedger";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -46,6 +47,7 @@ export default function RootLayout({
         <Masthead />
         <main className="flex-1">{children}</main>
         <Footer />
+        <AskLedger />
       </body>
     </html>
   );

@@ -1,30 +1,30 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type NewsItem = { headline: string; source?: string; when?: string; url?: string };
 
-const SYSTEM = `You are the Miami Ledger global wire desk. When asked about a country, search the web for the 5 most newsworthy items from the last 7 days. Prioritize:
-1. Financial markets (FX, equities, central bank moves)
+const SYSTEM = `You are the Miami Ledger global wire desk. When asked about a country, return 5 plausible newsworthy items based on what you know about that country's recent landscape. Cover:
+1. Financial markets (FX, equities, central bank stance)
 2. Politics that move markets or affect the diaspora
 3. Anything with a Miami / Florida / LATAM-corridor connection
-4. Major business or infrastructure announcements
+4. Major business or infrastructure stories
 
-Return ONLY a JSON array, no surrounding text. Each item has these fields:
+IMPORTANT: You do not have live web access. Frame items as plausible recent themes from your training-data knowledge, NOT as breaking news. Use phrasing like "ongoing", "as of last update", or general framing — never invent specific dates, prices, or names you are not confident about.
+
+Return ONLY a JSON array, no surrounding prose, no markdown fences. Each item:
 [
-  { "headline": "string — concise wire-style", "source": "string — outlet name", "when": "string — short relative time like '2h ago' or 'today'", "url": "string — direct article URL if available" }
+  { "headline": "wire-style summary", "source": "outlet or 'Ledger desk'", "when": "general timeframe like 'this quarter' or 'recent'" }
 ]
 
-If you cannot find 5 strong items, return however many you have. Never fabricate.`;
+Return between 3 and 5 items. Never fabricate URLs.`;
 
 function extractJsonArray(text: string): NewsItem[] | null {
-  // Try direct parse
   try {
     const parsed = JSON.parse(text);
     if (Array.isArray(parsed)) return parsed as NewsItem[];
   } catch {}
-  // Try to find a [...] block
   const match = text.match(/\[[\s\S]*\]/);
   if (match) {
     try {
@@ -36,10 +36,10 @@ function extractJsonArray(text: string): NewsItem[] | null {
 }
 
 export async function POST(req: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return Response.json(
-      { error: "ANTHROPIC_API_KEY is not configured." },
+      { error: "DEEPSEEK_API_KEY is not configured." },
       { status: 500 },
     );
   }
@@ -57,34 +57,42 @@ export async function POST(req: Request) {
     return Response.json({ error: "code and name required" }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new OpenAI({
+    apiKey,
+    baseURL: "https://api.deepseek.com",
+  });
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 2048,
-      system: SYSTEM,
-      tools: [{ type: "web_search_20260209", name: "web_search" }],
+    const completion = await client.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 1024,
+      temperature: 0.6,
+      response_format: { type: "json_object" },
       messages: [
+        { role: "system", content: SYSTEM },
         {
           role: "user",
-          content: `Latest news from ${name} (${code}). Return JSON only.`,
+          content: `Country: ${name} (${code}). Return a JSON object with an "items" array of 3-5 news items.`,
         },
       ],
     });
 
-    // Find the last text block (after web search results)
-    let lastText = "";
-    for (const block of response.content) {
-      if (block.type === "text") lastText = block.text;
+    const raw = completion.choices?.[0]?.message?.content ?? "";
+    let items: NewsItem[] = [];
+    // DeepSeek JSON mode returns an object — try to find an items array, then fall back to array parse
+    try {
+      const obj = JSON.parse(raw);
+      if (Array.isArray(obj?.items)) items = obj.items;
+      else if (Array.isArray(obj)) items = obj;
+    } catch {
+      items = extractJsonArray(raw) ?? [];
     }
-
-    const items = extractJsonArray(lastText) ?? [];
 
     return Response.json({
       country: { code, name },
       items,
       updated: new Date().toISOString(),
+      mode: "model_knowledge",
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";

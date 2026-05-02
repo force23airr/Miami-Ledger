@@ -303,7 +303,7 @@ export default function AskLedger() {
               )}
             </div>
             <div className="mt-2 font-terminal text-[10px] uppercase tracking-widest text-foreground/30">
-              Powered by Claude · educational, not financial advice
+              Powered by DeepSeek · educational, not financial advice
             </div>
           </form>
         </aside>

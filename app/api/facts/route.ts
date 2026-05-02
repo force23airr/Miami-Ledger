@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,12 +42,12 @@ Treat each like a desk question — give the number, a bit of context, and the s
 type ClientMessage = { role: "user" | "assistant"; content: string };
 
 export async function POST(req: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return new Response(
       JSON.stringify({
         error:
-          "ANTHROPIC_API_KEY is not configured. Add it in Vercel → Settings → Environment Variables (or .env.local for development).",
+          "DEEPSEEK_API_KEY is not configured. Add it in Vercel → Settings → Environment Variables (or .env.local for development).",
       }),
       { status: 500, headers: { "content-type": "application/json" } },
     );
@@ -71,39 +71,34 @@ export async function POST(req: Request) {
     });
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new OpenAI({
+    apiKey,
+    baseURL: "https://api.deepseek.com",
+  });
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const claudeStream = client.messages.stream({
-          model: "claude-opus-4-7",
+        const completion = await client.chat.completions.create({
+          model: "deepseek-chat",
+          stream: true,
           max_tokens: 1024,
-          system: [
-            {
-              type: "text",
-              text: SYSTEM_PROMPT,
-              cache_control: { type: "ephemeral" },
-            },
-            {
-              type: "text",
-              text: STARTERS_CONTEXT,
-              cache_control: { type: "ephemeral" },
-            },
+          temperature: 0.4,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: STARTERS_CONTEXT },
+            ...messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
           ],
-          thinking: { type: "adaptive" },
-          messages: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
         });
 
-        claudeStream.on("text", (delta) => {
-          controller.enqueue(encoder.encode(delta));
-        });
-
-        await claudeStream.finalMessage();
+        for await (const chunk of completion) {
+          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+          if (delta) controller.enqueue(encoder.encode(delta));
+        }
         controller.close();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";

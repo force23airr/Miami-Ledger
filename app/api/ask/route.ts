@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { ARTICLES } from "@/lib/articles";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ WHAT YOU DO
 - Answer questions about Miami: local news, fintech, engineering, academics, food, culture, neighborhoods.
 - Discuss Miami Ledger stories when relevant.
 - Be useful for follow-up questions: "where can I find this", "what should I do next", "what's the angle for me".
-- When the user clicks a "Profit angles" / "Business ideas" button about a specific story, generate 3-5 concrete, non-obvious business or career angles a smart Miami operator could pursue from that story. Use clear bullets. Focus on what's executable in the 305 specifically.
+- When asked for "Profit angles" / "Business ideas" about a specific story, generate 3-5 concrete, non-obvious business or career angles a smart Miami operator could pursue from that story. Use clear bullets. Focus on what's executable in the 305 specifically.
 
 WHAT YOU AVOID
 - Making up sources or fake citations.
@@ -38,12 +38,12 @@ const ARTICLE_INDEX = ARTICLES.map(
 const ARTICLE_CONTEXT = `Recent stories on the Ledger you can reference:\n${ARTICLE_INDEX}`;
 
 export async function POST(req: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return new Response(
       JSON.stringify({
         error:
-          "ANTHROPIC_API_KEY is not configured. Add it in Vercel → Settings → Environment Variables (or .env.local for development).",
+          "DEEPSEEK_API_KEY is not configured. Add it in Vercel → Settings → Environment Variables (or .env.local for development).",
       }),
       { status: 500, headers: { "content-type": "application/json" } },
     );
@@ -67,39 +67,34 @@ export async function POST(req: Request) {
     });
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new OpenAI({
+    apiKey,
+    baseURL: "https://api.deepseek.com",
+  });
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const claudeStream = client.messages.stream({
-          model: "claude-opus-4-7",
+        const completion = await client.chat.completions.create({
+          model: "deepseek-chat",
+          stream: true,
           max_tokens: 1024,
-          system: [
-            {
-              type: "text",
-              text: SYSTEM_PROMPT,
-              cache_control: { type: "ephemeral" },
-            },
-            {
-              type: "text",
-              text: ARTICLE_CONTEXT,
-              cache_control: { type: "ephemeral" },
-            },
+          temperature: 0.7,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: ARTICLE_CONTEXT },
+            ...messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
           ],
-          thinking: { type: "adaptive" },
-          messages: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
         });
 
-        claudeStream.on("text", (delta) => {
-          controller.enqueue(encoder.encode(delta));
-        });
-
-        await claudeStream.finalMessage();
+        for await (const chunk of completion) {
+          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+          if (delta) controller.enqueue(encoder.encode(delta));
+        }
         controller.close();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";

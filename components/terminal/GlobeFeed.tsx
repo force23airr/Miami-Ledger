@@ -1,53 +1,90 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { geoEqualEarth, geoPath, type GeoProjection } from "d3-geo";
+import { feature } from "topojson-client";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 import { COUNTRIES, type Country } from "@/lib/globe";
 import { openAskLedger } from "@/components/AskLedger";
 
 const VB_W = 1000;
-const VB_H = 500;
-const project = (lat: number, lng: number) => ({
-  x: ((lng + 180) / 360) * VB_W,
-  y: ((90 - lat) / 180) * VB_H,
-});
+const VB_H = 520;
+const TOPO_URL =
+  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-const CONTINENT_PATH =
-  "M 150 100 L 230 90 L 290 110 L 320 150 L 340 200 L 320 240 L 290 250 L 270 270 L 250 280 L 230 270 L 210 250 L 200 220 L 195 200 L 180 180 L 165 160 L 155 130 Z " +
-  "M 270 270 L 285 290 L 300 305 L 310 320 L 295 315 Z " +
-  "M 320 320 L 345 320 L 360 350 L 365 380 L 360 410 L 345 440 L 330 455 L 315 455 L 305 430 L 305 400 L 310 370 L 315 345 Z " +
-  "M 480 130 L 530 120 L 560 130 L 575 145 L 565 165 L 540 175 L 510 175 L 490 165 L 478 150 Z " +
-  "M 510 200 L 555 195 L 580 215 L 595 245 L 600 280 L 590 320 L 570 350 L 550 365 L 530 360 L 515 340 L 505 310 L 500 275 L 502 240 Z " +
-  "M 580 175 L 615 175 L 635 190 L 640 215 L 625 230 L 605 230 L 590 215 Z " +
-  "M 600 130 L 700 110 L 780 115 L 830 130 L 860 155 L 875 185 L 870 215 L 845 235 L 810 245 L 780 245 L 760 240 L 740 235 L 720 230 L 700 230 L 680 220 L 660 205 L 645 180 L 625 160 L 605 145 Z " +
-  "M 720 235 L 745 240 L 760 255 L 760 280 L 745 295 L 730 295 L 720 280 L 715 260 Z " +
-  "M 800 250 L 840 255 L 855 270 L 850 290 L 825 295 L 805 285 Z " +
-  "M 820 360 L 880 355 L 900 375 L 895 400 L 870 415 L 840 415 L 820 400 L 810 380 Z " +
-  "M 870 175 L 885 175 L 890 195 L 880 210 L 870 200 Z " +
-  "M 470 135 L 480 130 L 482 150 L 470 152 Z " +
-  "M 380 70 L 420 65 L 435 90 L 425 120 L 400 130 L 385 110 Z";
+// Map ISO-2 (our internal) → ISO-3166-1 numeric (used in world-atlas TopoJSON)
+const ISO2_TO_NUMERIC: Record<string, string> = {
+  US: "840", MX: "484", BR: "076", CO: "170", AR: "032", CL: "152",
+  PE: "604", VE: "862", CU: "192", DO: "214", HT: "332", CA: "124",
+  GB: "826", ES: "724", DE: "276", FR: "250", IT: "380", PT: "620",
+  IL: "376", AE: "784", SA: "682", ZA: "710", NG: "566",
+  CN: "156", JP: "392", IN: "356", SG: "702", KR: "410", AU: "036",
+};
+
+const NUMERIC_TO_ISO2: Record<string, string> = Object.fromEntries(
+  Object.entries(ISO2_TO_NUMERIC).map(([a, n]) => [n, a]),
+);
 
 type LiveItem = { headline: string; source?: string; when?: string; url?: string };
+
+type CountryFeature = Feature<Geometry, { name?: string }>;
 
 export default function GlobeFeed() {
   const [active, setActive] = useState<Country | null>(null);
   const [hover, setHover] = useState<string | null>(null);
+  const [features, setFeatures] = useState<CountryFeature[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [liveByCode, setLiveByCode] = useState<Record<string, LiveItem[]>>({});
   const [loadingCode, setLoadingCode] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<{ code: string; msg: string } | null>(null);
 
+  // Fetch world TopoJSON once
+  useEffect(() => {
+    let cancelled = false;
+    fetch(TOPO_URL)
+      .then((r) => {
+        if (!r.ok) throw new Error(`world-atlas ${r.status}`);
+        return r.json();
+      })
+      .then((topo) => {
+        if (cancelled) return;
+        const obj = topo?.objects?.countries;
+        if (!obj) throw new Error("no countries object in topojson");
+        // topojson-client's typings are loose; cast to our feature shape
+        const fc = feature(topo, obj) as unknown as FeatureCollection<
+          Geometry,
+          { name?: string }
+        >;
+        setFeatures(fc.features);
+      })
+      .catch((e) => {
+        if (!cancelled) setLoadError((e as Error).message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Projection — Equal Earth, fit to viewBox
+  const projection: GeoProjection = useMemo(() => {
+    return geoEqualEarth()
+      .scale(180)
+      .translate([VB_W / 2, VB_H / 2 + 8]);
+  }, []);
+
+  const pathGen = useMemo(() => geoPath(projection), [projection]);
+
+  // Project country pin coordinates
   const projected = useMemo(
     () =>
-      COUNTRIES.map((c) => ({
-        country: c,
-        ...project(c.lat, c.lng),
-      })),
-    [],
+      COUNTRIES.map((c) => {
+        const p = projection([c.lng, c.lat]);
+        return { country: c, x: p?.[0] ?? 0, y: p?.[1] ?? 0 };
+      }),
+    [projection],
   );
 
-  const meridians = [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150];
-  const parallels = [-60, -30, 0, 30, 60];
-
-  // Auto-fetch live news the first time a country is selected
+  // Auto-fetch live news on country selection
   useEffect(() => {
     if (!active) return;
     if (liveByCode[active.code]) return;
@@ -79,6 +116,26 @@ export default function GlobeFeed() {
     openAskLedger(prefill, autoSend);
   }
 
+  function handleCountryClick(numericId: string) {
+    const iso2 = NUMERIC_TO_ISO2[numericId];
+    if (!iso2) return;
+    const country = COUNTRIES.find((c) => c.code === iso2);
+    if (country) setActive(country);
+  }
+
+  // Compute fill/highlight for each feature based on tier + active
+  function fillForFeature(numericId: string): string {
+    const iso2 = NUMERIC_TO_ISO2[numericId];
+    if (!iso2) return "rgba(255,176,0,0.04)"; // unknown country: very faint
+    const c = COUNTRIES.find((x) => x.code === iso2);
+    if (!c) return "rgba(255,176,0,0.04)";
+    if (active?.code === c.code) return "rgba(255,176,0,0.35)";
+    if (hover === c.code) return "rgba(255,176,0,0.22)";
+    if (c.tier === "MIA") return "rgba(255,91,31,0.18)";
+    if (c.tier === "MAJOR") return "rgba(255,176,0,0.13)";
+    return "rgba(0,255,156,0.07)";
+  }
+
   return (
     <div className="rounded-md border border-terminal-amber/30 bg-black/70">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
@@ -88,50 +145,121 @@ export default function GlobeFeed() {
         </div>
         <div className="flex items-center gap-3 font-terminal text-[10px] uppercase tracking-widest text-foreground/40">
           <span>{COUNTRIES.length} markets</span>
-          <span className="hidden sm:inline">click any node · live wire on demand</span>
+          <span className="hidden sm:inline">click any country to drill in</span>
         </div>
       </div>
 
       <div className="grid gap-0 lg:grid-cols-12">
         {/* Map */}
         <div className="relative lg:col-span-8">
-          <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block w-full" preserveAspectRatio="xMidYMid meet">
+          <svg
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            className="block w-full"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* Background grid */}
             <defs>
-              <pattern id="globe-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,176,0,0.06)" strokeWidth="1" />
+              <pattern id="gf-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,176,0,0.05)" strokeWidth="1" />
               </pattern>
-              <radialGradient id="globe-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(255,176,0,0.12)" />
+              <radialGradient id="gf-glow" cx="50%" cy="50%" r="60%">
+                <stop offset="0%" stopColor="rgba(255,176,0,0.10)" />
                 <stop offset="100%" stopColor="rgba(255,176,0,0)" />
               </radialGradient>
             </defs>
-            <rect width={VB_W} height={VB_H} fill="url(#globe-grid)" />
-            <rect width={VB_W} height={VB_H} fill="url(#globe-glow)" />
+            <rect width={VB_W} height={VB_H} fill="url(#gf-grid)" />
+            <rect width={VB_W} height={VB_H} fill="url(#gf-glow)" />
 
-            {meridians.map((m) => {
-              const { x } = project(0, m);
+            {/* Graticule (lat/lng grid lines) using projection */}
+            {[-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150].map((lng) => {
+              const top = projection([lng, 80]);
+              const bot = projection([lng, -80]);
+              if (!top || !bot) return null;
               return (
-                <line key={`m-${m}`} x1={x} y1={0} x2={x} y2={VB_H} stroke="rgba(0,255,156,0.08)" strokeDasharray="2 6" />
+                <line
+                  key={`mer-${lng}`}
+                  x1={top[0]}
+                  y1={top[1]}
+                  x2={bot[0]}
+                  y2={bot[1]}
+                  stroke="rgba(0,255,156,0.07)"
+                  strokeDasharray="2 6"
+                />
               );
             })}
-            {parallels.map((p) => {
-              const { y } = project(p, 0);
+            {[-60, -30, 0, 30, 60].map((lat) => {
+              // approximate parallel as a line across visible width via samples
+              const samples: [number, number][] = [];
+              for (let lng = -180; lng <= 180; lng += 10) {
+                const p = projection([lng, lat]);
+                if (p) samples.push(p as [number, number]);
+              }
+              if (samples.length < 2) return null;
+              const d =
+                "M " +
+                samples.map((s) => `${s[0]} ${s[1]}`).join(" L ");
               return (
-                <line key={`p-${p}`} x1={0} y1={y} x2={VB_W} y2={y} stroke="rgba(0,255,156,0.08)" strokeDasharray="2 6" />
+                <path
+                  key={`par-${lat}`}
+                  d={d}
+                  fill="none"
+                  stroke={lat === 0 ? "rgba(255,176,0,0.18)" : "rgba(0,255,156,0.07)"}
+                  strokeDasharray={lat === 0 ? "4 6" : "2 6"}
+                />
               );
             })}
-            <line x1={0} y1={VB_H / 2} x2={VB_W} y2={VB_H / 2} stroke="rgba(255,176,0,0.18)" strokeDasharray="4 6" />
-            <line x1={VB_W / 2} y1={0} x2={VB_W / 2} y2={VB_H} stroke="rgba(255,176,0,0.18)" strokeDasharray="4 6" />
 
-            <path d={CONTINENT_PATH} fill="rgba(255,176,0,0.05)" stroke="rgba(255,176,0,0.3)" strokeWidth="1" />
+            {/* Countries */}
+            {features ? (
+              <g>
+                {features.map((f) => {
+                  const numericId = String(f.id ?? "");
+                  const iso2 = NUMERIC_TO_ISO2[numericId];
+                  const isInteractive = Boolean(iso2);
+                  const d = pathGen(f);
+                  if (!d) return null;
+                  return (
+                    <path
+                      key={numericId || f.properties?.name}
+                      d={d}
+                      fill={fillForFeature(numericId)}
+                      stroke="rgba(255,176,0,0.35)"
+                      strokeWidth={0.5}
+                      onMouseEnter={() => iso2 && setHover(iso2)}
+                      onMouseLeave={() => iso2 && setHover((h) => (h === iso2 ? null : h))}
+                      onClick={() => isInteractive && handleCountryClick(numericId)}
+                      className={isInteractive ? "cursor-pointer" : undefined}
+                    >
+                      {iso2 && (
+                        <title>
+                          {COUNTRIES.find((c) => c.code === iso2)?.name ?? iso2}
+                        </title>
+                      )}
+                    </path>
+                  );
+                })}
+              </g>
+            ) : (
+              <text
+                x={VB_W / 2}
+                y={VB_H / 2}
+                textAnchor="middle"
+                fontFamily="ui-monospace, monospace"
+                fontSize="14"
+                fill="rgba(255,176,0,0.6)"
+              >
+                {loadError ? `[map load error: ${loadError}]` : "loading world atlas…"}
+              </text>
+            )}
 
+            {/* Country pin nodes */}
             {projected.map(({ country, x, y }) => {
               const isActive = active?.code === country.code;
               const isHover = hover === country.code;
               const isMia = country.tier === "MIA";
               const isMajor = country.tier === "MAJOR";
-              const baseR = isMia ? 5 : isMajor ? 4 : 3;
-              const r = isActive || isHover ? baseR + 3 : baseR;
+              const baseR = isMia ? 4 : isMajor ? 3.5 : 2.5;
+              const r = isActive || isHover ? baseR + 2 : baseR;
               const fill = isMia ? "#ff5b1f" : isMajor ? "#ffb000" : "#00ff9c";
               return (
                 <g
@@ -142,8 +270,8 @@ export default function GlobeFeed() {
                   className="cursor-pointer"
                 >
                   {(isMia || isActive) && (
-                    <circle cx={x} cy={y} r={r + 6} fill="none" stroke={fill} strokeOpacity="0.5" strokeWidth="1">
-                      <animate attributeName="r" from={r + 2} to={r + 14} dur="2s" repeatCount="indefinite" />
+                    <circle cx={x} cy={y} r={r + 4} fill="none" stroke={fill} strokeOpacity="0.5" strokeWidth="1">
+                      <animate attributeName="r" from={r + 1} to={r + 12} dur="2s" repeatCount="indefinite" />
                       <animate attributeName="stroke-opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" />
                     </circle>
                   )}
@@ -152,6 +280,8 @@ export default function GlobeFeed() {
                     cy={y}
                     r={r}
                     fill={fill}
+                    stroke="black"
+                    strokeWidth={0.5}
                     style={{
                       filter: isActive
                         ? `drop-shadow(0 0 6px ${fill})`
@@ -161,16 +291,28 @@ export default function GlobeFeed() {
                     }}
                   />
                   {(isHover || isActive) && (
-                    <text
-                      x={x + r + 6}
-                      y={y + 3}
-                      fontFamily="ui-monospace, monospace"
-                      fontSize="11"
-                      fill="#f5f1e8"
-                      style={{ pointerEvents: "none" }}
-                    >
-                      {country.code} · {country.name}
-                    </text>
+                    <g style={{ pointerEvents: "none" }}>
+                      <rect
+                        x={x + r + 4}
+                        y={y - 9}
+                        rx={2}
+                        ry={2}
+                        height={14}
+                        width={(country.code.length + country.name.length) * 5.5 + 14}
+                        fill="rgba(0,0,0,0.85)"
+                        stroke="rgba(255,176,0,0.4)"
+                        strokeWidth={0.5}
+                      />
+                      <text
+                        x={x + r + 10}
+                        y={y + 1}
+                        fontFamily="ui-monospace, monospace"
+                        fontSize="10"
+                        fill="#f5f1e8"
+                      >
+                        {country.code} · {country.name}
+                      </text>
+                    </g>
                   )}
                 </g>
               );
@@ -206,7 +348,7 @@ export default function GlobeFeed() {
             <div className="flex h-full min-h-[180px] flex-col justify-center px-4 py-6 text-center font-terminal text-[12px] text-foreground/50">
               <div className="text-terminal-amber">
                 <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-terminal-amber animate-blink" />
-                select a node
+                select a country
               </div>
               <p className="mt-2 leading-relaxed">
                 Click any country on the map to drill into its wire.
@@ -288,7 +430,7 @@ function CountryPanel({
         </button>
       </div>
 
-      {/* Wire section */}
+      {/* Wire section header */}
       <div className="border-b border-white/5 px-3 py-2">
         <div className="flex items-center justify-between">
           <div className="font-terminal text-[10px] uppercase tracking-widest text-terminal-amber">
@@ -311,9 +453,7 @@ function CountryPanel({
             <span className="animate-blink">▮</span> Searching the wire for {c.name}…
           </li>
         )}
-        {error && (
-          <li className="px-3 py-2 text-terminal-red">[error] {error}</li>
-        )}
+        {error && <li className="px-3 py-2 text-terminal-red">[error] {error}</li>}
         {(live ?? c.headlines.map((h) => ({ headline: h }))).map((it, i) => {
           const item = it as LiveItem;
           return (
@@ -347,7 +487,6 @@ function CountryPanel({
         })}
       </ul>
 
-      {/* Question chips */}
       <div className="border-t border-white/10 bg-black/40 p-3">
         <div className="mb-2 font-terminal text-[10px] uppercase tracking-widest text-foreground/40">
           Ask the Ledger about {c.name}
@@ -363,9 +502,7 @@ function CountryPanel({
             </button>
           ))}
           <button
-            onClick={() =>
-              onAsk(`Tell me about ${c.name} — `, false)
-            }
+            onClick={() => onAsk(`Tell me about ${c.name} — `, false)}
             className="rounded-full border border-terminal-amber/40 bg-terminal-amber/10 px-2.5 py-1 font-terminal text-[10px] uppercase tracking-widest text-terminal-amber transition hover:bg-terminal-amber/20"
           >
             Ask anything

@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #f5f1e8;
+  --paper: #faf6ec;
+  --ink: #0a0a0a;
+  --accent: #ff5b1f;
+  --accent-soft: #ffb38a;
+  --terminal-bg: #050505;
+  --terminal-grid: #111111;
+  --terminal-amber: #ffb000;
+  --terminal-green: #00ff9c;
+  --terminal-cyan: #4ad7ff;
+  --terminal-red: #ff3b3b;
+  --terminal-dim: #4a4a4a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-terminal-bg: var(--terminal-bg);
+  --color-terminal-grid: var(--terminal-grid);
+  --color-terminal-amber: var(--terminal-amber);
+  --color-terminal-green: var(--terminal-green);
+  --color-terminal-cyan: var(--terminal-cyan);
+  --color-terminal-red: var(--terminal-red);
+  --color-terminal-dim: var(--terminal-dim);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
+  --font-mono: var(--font-jetbrains);
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.font-editorial {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+
+.font-terminal {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-feature-settings: "zero", "ss02";
+}
+
+/* Terminal scanline overlay */
+.terminal-scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 1;
+}
+
+.terminal-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 176, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 176, 0, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes feed-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-feed-in {
+  animation: feed-in 0.4s ease-out;
+}
+
+.glow-amber {
+  text-shadow: 0 0 8px rgba(255, 176, 0, 0.5);
+}
+
+.glow-green {
+  text-shadow: 0 0 8px rgba(0, 255, 156, 0.45);
+}
+
+/* Scrollbar - editorial */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }

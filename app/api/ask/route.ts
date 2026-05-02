@@ -1,13 +1,10 @@
 import OpenAI from "openai";
 import { ARTICLES } from "@/lib/articles";
+import { check, clientIp, tooManyResponse } from "@/lib/rate-limit";
+import { checkBodyTooLarge, validateMessages } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type ClientMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
 
 const SYSTEM_PROMPT = `You are "Ask the Ledger" — the AI desk assistant for Miami Ledger (miamiledger.org), a Miami-based independent journalism outlet.
 
@@ -38,6 +35,18 @@ const ARTICLE_INDEX = ARTICLES.map(
 const ARTICLE_CONTEXT = `Recent stories on the Ledger you can reference:\n${ARTICLE_INDEX}`;
 
 export async function POST(req: Request) {
+  if (checkBodyTooLarge(req)) {
+    return new Response(JSON.stringify({ error: "request body too large" }), {
+      status: 413,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  // Rate limit: 20 chat sends per IP per 5 minutes
+  const ip = clientIp(req);
+  const rl = check("ask", ip, 20, 300);
+  if (!rl.allowed) return tooManyResponse(rl.retryAfterSeconds);
+
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return new Response(
@@ -49,7 +58,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { messages?: ClientMessage[] };
+  let body: { messages?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -59,13 +68,14 @@ export async function POST(req: Request) {
     });
   }
 
-  const messages = body.messages ?? [];
-  if (messages.length === 0) {
-    return new Response(JSON.stringify({ error: "messages required" }), {
+  const v = validateMessages(body.messages);
+  if (!v.ok) {
+    return new Response(JSON.stringify({ error: v.error }), {
       status: 400,
       headers: { "content-type": "application/json" },
     });
   }
+  const messages = v.messages;
 
   const client = new OpenAI({
     apiKey,

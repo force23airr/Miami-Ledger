@@ -14,9 +14,18 @@ export const dynamic = "force-dynamic";
 //
 // Then set STRIPE_WEBHOOK_SECRET to the signing secret Stripe gives you.
 //
-// Successful sponsorships are logged to the Vercel function logs with the
-// full application metadata so you can manually review and add the partner
-// to lib/startups.ts. Future versions can plug in email/Slack/DB.
+// We log a SUMMARY only — no email addresses, no free-text application
+// fields — to avoid leaking PII into Vercel logs. Full application data
+// stays in the Stripe dashboard (Customer + Subscription metadata) where
+// access is gated by your Stripe login. Review new sponsorships there.
+
+function maskEmail(email: string | null | undefined): string {
+  if (!email || typeof email !== "string") return "[no email]";
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return "[malformed]";
+  const head = user.slice(0, 2);
+  return `${head}***@${domain}`;
+}
 
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -46,27 +55,15 @@ export async function POST(req: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       const meta = session.metadata ?? {};
       if (meta.kind === "miami_ledger_startup_sponsorship") {
-        console.log(
-          "[stripe-webhook] NEW SPONSORSHIP:",
-          JSON.stringify(
-            {
-              session_id: session.id,
-              customer_email: session.customer_email ?? meta.contact_email,
-              amount_total: session.amount_total,
-              currency: session.currency,
-              tier: meta.tier,
-              startup_name: meta.startup_name,
-              one_liner: meta.one_liner,
-              description: meta.description,
-              category: meta.category,
-              url: meta.url,
-              founders: meta.founders,
-              hq: meta.hq,
-            },
-            null,
-            2,
-          ),
-        );
+        // Summary log only. Full data is in Stripe dashboard metadata.
+        console.log("[stripe-webhook] new sponsorship", {
+          session_id: session.id,
+          tier: meta.tier,
+          category: meta.category,
+          email: maskEmail(session.customer_email ?? meta.contact_email),
+          amount_total: session.amount_total,
+          currency: session.currency,
+        });
       }
       break;
     }
@@ -75,11 +72,10 @@ export async function POST(req: Request) {
       const sub = event.data.object as Stripe.Subscription;
       const meta = sub.metadata ?? {};
       if (meta.kind === "miami_ledger_startup_sponsorship") {
-        console.log("[stripe-webhook] CANCELLED SPONSORSHIP:", {
+        console.log("[stripe-webhook] sponsorship cancelled", {
           subscription_id: sub.id,
           tier: meta.tier,
-          startup_name: meta.startup_name,
-          contact_email: meta.contact_email,
+          email: maskEmail(meta.contact_email),
         });
       }
       break;

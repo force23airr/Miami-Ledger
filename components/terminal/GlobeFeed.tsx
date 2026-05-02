@@ -6,6 +6,7 @@ import { feature } from "topojson-client";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import { COUNTRIES, type Country } from "@/lib/globe";
 import { openAskLedger } from "@/components/AskLedger";
+import { safeHttpUrl } from "@/lib/validation";
 
 const VB_W = 1000;
 const VB_H = 520;
@@ -456,16 +457,19 @@ function CountryPanel({
         {error && <li className="px-3 py-2 text-terminal-red">[error] {error}</li>}
         {(live ?? c.headlines.map((h) => ({ headline: h }))).map((it, i) => {
           const item = it as LiveItem;
+          // Defense-in-depth: validate URLs again at render time. The API
+          // route also sanitizes, but never trust model-supplied content.
+          const safeUrl = safeHttpUrl(item.url);
           return (
             <li key={i} className="px-3 py-2 leading-snug text-foreground/85">
               <div className="flex gap-2">
                 <span className="text-terminal-dim">›</span>
                 <div className="min-w-0">
-                  {item.url ? (
+                  {safeUrl ? (
                     <a
-                      href={item.url}
+                      href={safeUrl}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="noopener noreferrer nofollow"
                       className="hover:text-terminal-amber"
                     >
                       {item.headline}

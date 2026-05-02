@@ -83,9 +83,15 @@ export async function POST(req: Request) {
     return err((e as Error).message, 500);
   }
 
-  // Build the absolute URLs Stripe needs to redirect back to. Honor the
-  // request's host so this works locally and in preview deployments.
-  const origin = new URL(req.url).origin;
+  // Build the absolute URLs Stripe needs to redirect back to. Use a
+  // CONFIGURED canonical origin — never the request's Host header — so a
+  // forged Host or a malicious checkout link can't redirect a payer to an
+  // attacker-controlled domain after payment.
+  const origin = (
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.APP_URL ??
+    "https://miamiledger.org"
+  ).replace(/\/$/, "");
 
   try {
     const session = await stripe.checkout.sessions.create({

@@ -4,6 +4,7 @@ import Clock from "@/components/terminal/Clock";
 import BeatPanel from "@/components/terminal/BeatPanel";
 import MarketPanel from "@/components/terminal/MarketPanel";
 import HeadlinePulse from "@/components/terminal/HeadlinePulse";
+import GlobeFeed from "@/components/terminal/GlobeFeed";
 import { FEED_BY_BEAT } from "@/lib/feed";
 
 export const metadata = {
@@ -71,6 +72,11 @@ export default function TerminalPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Global desk */}
+        <div className="mt-4">
+          <GlobeFeed />
         </div>
 
         {/* Beats grid */}

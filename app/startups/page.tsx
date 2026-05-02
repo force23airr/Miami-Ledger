@@ -60,12 +60,12 @@ export default function StartupsPage() {
               newsroom is independent and never paid.
             </p>
           </div>
-          <a
-            href="#sponsor"
+          <Link
+            href="/sponsor"
             className="rounded-md border border-terminal-amber/40 bg-terminal-amber/10 px-4 py-2 font-terminal text-xs uppercase tracking-widest text-terminal-amber hover:bg-terminal-amber/20"
           >
-            Become featured
-          </a>
+            Become featured →
+          </Link>
         </div>
       </div>
 
@@ -194,13 +194,13 @@ export default function StartupsPage() {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a
-              href="mailto:partnerships@miamiledger.org?subject=Featured%20Startup%20Application"
+            <Link
+              href="/sponsor"
               className="inline-flex items-center gap-2 rounded-md bg-terminal-amber px-5 py-3 font-terminal text-xs uppercase tracking-widest text-ink hover:opacity-90"
             >
-              Apply to be featured
-              <span>↗</span>
-            </a>
+              Apply &amp; pay · self-serve
+              <span>→</span>
+            </Link>
             <a
               href="mailto:partnerships@miamiledger.org?subject=Media%20kit"
               className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-4 py-3 font-terminal text-xs uppercase tracking-widest text-foreground/85 hover:border-foreground/40 hover:text-foreground"
@@ -208,7 +208,7 @@ export default function StartupsPage() {
               Request media kit
             </a>
             <span className="font-terminal text-[10px] uppercase tracking-widest text-foreground/40">
-              partnerships@miamiledger.org
+              Stripe-secured · cancel anytime
             </span>
           </div>
 

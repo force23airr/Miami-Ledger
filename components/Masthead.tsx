@@ -9,7 +9,10 @@ const SECTIONS = [
   { slug: "wire", label: "Wire" },
   { slug: "facts", label: "Facts" },
   { slug: "skyview", label: "Sky View" },
+  { slug: "blueprints", label: "Blueprints" },
   { slug: "streets", label: "Streets" },
+  { slug: "startups", label: "Startups" },
+  { slug: "projects", label: "Projects" },
   { slug: "whats-going-on", label: "What's Going On" },
   { slug: "store", label: "Store" },
 ];

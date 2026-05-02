@@ -65,25 +65,27 @@ const STATUS_LABEL: Record<Project["status"], string> = {
   soon: "Coming soon",
 };
 
-export default function ProjectsRail() {
+export default function ProjectsRail({ hideHeader = false }: { hideHeader?: boolean }) {
   if (PROJECTS.length === 0) return null;
 
   return (
     <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
-      <div className="mb-6 flex items-end justify-between border-b border-white/10 pb-3">
-        <div>
-          <div className="font-terminal text-[11px] uppercase tracking-widest text-terminal-amber">
-            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-terminal-amber animate-blink" />
-            Built by the desk
+      {!hideHeader && (
+        <div className="mb-6 flex items-end justify-between border-b border-white/10 pb-3">
+          <div>
+            <div className="font-terminal text-[11px] uppercase tracking-widest text-terminal-amber">
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-terminal-amber animate-blink" />
+              Built by the desk
+            </div>
+            <h2 className="mt-1 font-editorial text-3xl font-bold tracking-tight">
+              The Ledger ships things, too.
+            </h2>
           </div>
-          <h2 className="mt-1 font-editorial text-3xl font-bold tracking-tight">
-            The Ledger ships things, too.
-          </h2>
+          <span className="font-terminal text-[11px] uppercase tracking-widest text-foreground/40">
+            {PROJECTS.length} project{PROJECTS.length === 1 ? "" : "s"}
+          </span>
         </div>
-        <span className="font-terminal text-[11px] uppercase tracking-widest text-foreground/40">
-          {PROJECTS.length} project{PROJECTS.length === 1 ? "" : "s"}
-        </span>
-      </div>
+      )}
 
       <div
         className={`grid gap-6 ${

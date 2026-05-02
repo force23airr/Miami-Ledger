@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { STARTERS, type FactStarter } from "./starters";
+import { useInvisibleTurnstile } from "@/components/Turnstile";
 
 type Entry = {
   id: number;
@@ -28,6 +29,7 @@ export default function FactsDesk() {
   const [filter, setFilter] = useState<"All" | FactStarter["category"]>("All");
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const turnstile = useInvisibleTurnstile();
 
   useEffect(() => {
     try {
@@ -59,11 +61,14 @@ export default function FactsDesk() {
     abortRef.current = ctrl;
 
     try {
+      const turnstileToken = turnstile.enabled ? await turnstile.execute() : null;
+
       const res = await fetch("/api/facts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: trimmed }],
+          turnstileToken,
         }),
         signal: ctrl.signal,
       });

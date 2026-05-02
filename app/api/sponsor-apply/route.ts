@@ -1,4 +1,6 @@
 import { getStripe, getTierPriceId } from "@/lib/stripe";
+import { check, clientIp, tooManyResponse } from "@/lib/rate-limit";
+import { turnstileFailedResponse, verifyTurnstileToken } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +29,7 @@ type Body = {
   hq?: string;
   contactEmail?: string;
   tier?: string;
+  turnstileToken?: string;
 };
 
 function err(message: string, status = 400) {
@@ -38,11 +41,23 @@ function trunc(s: string, n: number) {
 }
 
 export async function POST(req: Request) {
+  // Rate limit: 10 sponsor attempts per IP per 10 minutes
+  const ip = clientIp(req);
+  const rl = check("sponsor-apply", ip, 10, 600);
+  if (!rl.allowed) return tooManyResponse(rl.retryAfterSeconds);
+
   let body: Body;
   try {
     body = await req.json();
   } catch {
     return err("Invalid JSON");
+  }
+
+  // Bot check (skipped if TURNSTILE_SECRET_KEY not configured)
+  const ts = await verifyTurnstileToken(body.turnstileToken, ip);
+  if (!ts.ok) {
+    console.warn("[sponsor-apply] turnstile failed:", ts.reason);
+    return turnstileFailedResponse();
   }
 
   const name = body.name?.trim() ?? "";

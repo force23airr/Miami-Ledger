@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { ARTICLES } from "@/lib/articles";
 import { check, clientIp, tooManyResponse } from "@/lib/rate-limit";
 import { checkBodyTooLarge, validateMessages } from "@/lib/validation";
+import { turnstileFailedResponse, verifyTurnstileToken } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { messages?: unknown };
+  let body: { messages?: unknown; turnstileToken?: string };
   try {
     body = await req.json();
   } catch {
@@ -66,6 +67,13 @@ export async function POST(req: Request) {
       status: 400,
       headers: { "content-type": "application/json" },
     });
+  }
+
+  // Bot check (skipped if TURNSTILE_SECRET_KEY not configured)
+  const ts = await verifyTurnstileToken(body.turnstileToken, ip);
+  if (!ts.ok) {
+    console.warn("[ask] turnstile failed:", ts.reason);
+    return turnstileFailedResponse();
   }
 
   const v = validateMessages(body.messages);

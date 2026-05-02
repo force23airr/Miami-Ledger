@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useInvisibleTurnstile } from "@/components/Turnstile";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -19,6 +20,7 @@ export default function AskLedger() {
   const [streaming, setStreaming] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const turnstile = useInvisibleTurnstile();
 
   // Restore history
   useEffect(() => {
@@ -75,6 +77,9 @@ export default function AskLedger() {
     abortRef.current = ctrl;
 
     try {
+      // Get a fresh Turnstile token for this send (silent in managed mode)
+      const turnstileToken = turnstile.enabled ? await turnstile.execute() : null;
+
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -83,6 +88,7 @@ export default function AskLedger() {
             role: m.role,
             content: m.content,
           })),
+          turnstileToken,
         }),
         signal: ctrl.signal,
       });

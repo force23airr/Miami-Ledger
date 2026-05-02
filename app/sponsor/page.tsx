@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CATEGORY_LABEL, TIER_META } from "@/lib/startups";
+import { TurnstileWidget } from "@/components/Turnstile";
 
 type Tier = "featured" | "spotlight" | "listing";
 
@@ -21,6 +22,8 @@ export default function SponsorPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   const params = useMemo(() => {
     if (typeof window === "undefined") return new URLSearchParams();
@@ -36,6 +39,10 @@ export default function SponsorPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the bot check above before continuing.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -52,6 +59,7 @@ export default function SponsorPage() {
           hq,
           contactEmail,
           tier,
+          turnstileToken,
         }),
       });
       const data = await res.json();
@@ -203,6 +211,16 @@ export default function SponsorPage() {
             placeholder="you@startup.com"
           />
 
+          <div>
+            <div className="mb-2 font-terminal text-[10px] uppercase tracking-widest text-foreground/50">
+              3 · Bot check
+            </div>
+            <TurnstileWidget
+              onToken={(t) => setTurnstileToken(t)}
+              onExpire={() => setTurnstileToken(null)}
+            />
+          </div>
+
           {error && (
             <div className="rounded-md border border-terminal-red/40 bg-terminal-red/10 px-3 py-2 font-terminal text-[11px] uppercase tracking-widest text-terminal-red">
               {error}
@@ -212,7 +230,7 @@ export default function SponsorPage() {
           <div className="flex items-center justify-between gap-4">
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || (turnstileRequired && !turnstileToken)}
               className="inline-flex items-center gap-2 rounded-md bg-terminal-amber px-5 py-3 font-terminal text-xs uppercase tracking-widest text-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Redirecting to Stripe…" : `Continue · ${TIER_META[tier].price}`}

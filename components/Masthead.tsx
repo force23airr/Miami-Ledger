@@ -6,6 +6,7 @@ const SECTIONS = [
   { slug: "engineering", label: "Engineering" },
   { slug: "academics", label: "Academics" },
   { slug: "video", label: "Video" },
+  { slug: "wire", label: "Wire" },
   { slug: "whats-going-on", label: "What's Going On" },
   { slug: "store", label: "Store" },
 ];

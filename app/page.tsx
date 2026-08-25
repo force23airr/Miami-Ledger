@@ -7,7 +7,6 @@ import {
 } from "@/lib/articles";
 import { getAllArticles } from "@/sanity/lib/articles";
 import ArticleCard from "@/components/ArticleCard";
-import ArticleCover from "@/components/ArticleCover";
 import Ticker from "@/components/Ticker";
 import ProjectsRail from "@/components/ProjectsRail";
 import StartupsRail from "@/components/StartupsRail";
@@ -25,6 +24,7 @@ export default async function Home() {
       (article.source !== "cms" || hasPlacement(article, "homepageLatest")),
     )
     .slice(0, 5);
+  const leadStories = [featured, ...recent].slice(0, 3);
   const tickerHeadlines = articles
     .filter((article) => hasPlacement(article, "ticker"))
     .map((article) => `${article.category.toUpperCase()} — ${article.title}`);
@@ -41,80 +41,49 @@ export default async function Home() {
 
       <LocalNewsFinder />
 
-      <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-12">
-          <Link
-            href={articleHref(featured)}
-            className="group relative col-span-12 block lg:col-span-8"
-          >
-            <ArticleCover
-              category={featured.category}
-              size="xl"
-              label={featured.tag ?? "Cover Story"}
-              imageUrl={featured.coverImageUrl}
-              imageAlt={featured.coverImageAlt}
-            />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-6 sm:p-8">
-              <div className="mb-2 flex items-center gap-3 font-terminal text-[11px] uppercase tracking-widest text-white/70">
-                <span className="rounded-sm bg-accent px-1.5 py-0.5 text-ink">{featured.tag ?? "Cover"}</span>
-                <span>{featured.category}</span>
-                <span>·</span>
-                <span>{featured.readMinutes} min read</span>
+      <section className="mx-auto max-w-7xl px-4 pt-8 sm:px-6">
+        <div className="relative overflow-hidden rounded-2xl border border-accent/25 bg-[linear-gradient(120deg,rgba(255,91,31,0.14),rgba(255,176,0,0.06)_45%,rgba(255,255,255,0.02))] px-6 py-7 sm:px-8">
+          <div className="absolute -right-16 -top-24 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="font-terminal text-[10px] uppercase tracking-[0.28em] text-accent">
+                The Ledger Network · Founded in Miami
               </div>
-              <h1 className="font-editorial text-4xl font-bold leading-[1.05] text-white sm:text-5xl md:text-6xl">
-                {featured.title}
+              <h1 className="mt-2 font-editorial text-4xl font-bold leading-none tracking-tight text-foreground sm:text-5xl">
+                America&apos;s <span className="text-accent">Ledger</span>
               </h1>
-              <p className="mt-3 max-w-2xl text-sm text-white/80 sm:text-base">{featured.dek}</p>
-              <div className="mt-4 inline-flex items-center gap-2 text-xs text-white/70">
-                <span className="font-medium text-white">{featured.author}</span>
-                <span>·</span>
-                <span>{new Date(featured.publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}</span>
-              </div>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-foreground/65 sm:text-base">
+                Independent reporting built city by city. Miami is chapter one.
+              </p>
             </div>
+            <div className="shrink-0 border-l-2 border-accent pl-4 font-terminal text-[10px] uppercase leading-relaxed tracking-widest text-foreground/45">
+              One network<br />
+              Every city has a ledger
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex items-end justify-between border-b border-white/10 pb-3">
+          <div>
+            <div className="font-terminal text-[10px] uppercase tracking-[0.24em] text-accent">
+              The front page
+            </div>
+            <h2 className="mt-1 font-editorial text-3xl font-bold tracking-tight sm:text-4xl">
+              Stories that move Miami.
+            </h2>
+          </div>
+          <Link
+            href="/local"
+            className="hidden font-terminal text-[11px] uppercase tracking-widest text-foreground/50 transition hover:text-accent sm:block"
+          >
+            All local news →
           </Link>
+        </div>
 
-          <aside className="col-span-12 lg:col-span-4">
-            <div className="flex items-baseline justify-between border-b border-white/10 pb-2">
-              <span className="font-terminal text-[11px] uppercase tracking-widest text-foreground/50">
-                The latest
-              </span>
-              <Link href="/local" className="font-terminal text-[11px] uppercase tracking-widest text-accent hover:underline">
-                More →
-              </Link>
-            </div>
-            <div className="mt-2">
-              {recent.map((a) => (
-                <ArticleCard key={a.slug} article={a} />
-              ))}
-            </div>
-
-            <div className="mt-8 overflow-hidden rounded-md border border-white/10 bg-black">
-              <div className="relative aspect-video bg-gradient-to-br from-amber-500/30 via-orange-700/20 to-zinc-900">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <button
-                    aria-label="Play"
-                    className="group inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur transition hover:bg-accent"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-7 w-7 translate-x-0.5 fill-white">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-sm bg-black/60 px-2 py-0.5 font-terminal text-[10px] uppercase tracking-widest text-terminal-red">
-                  <span className="h-1.5 w-1.5 rounded-full bg-terminal-red animate-blink" /> On Air
-                </div>
-                <div className="absolute bottom-3 left-3 right-3 font-terminal text-[10px] uppercase tracking-widest text-white/70">
-                  Ledger Live · Brickell skyline w/ A. Fernandez
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-3 text-xs text-foreground/60">
-                <span>Watch the desk</span>
-                <Link href="/video" className="text-terminal-amber hover:underline">
-                  Open video desk →
-                </Link>
-              </div>
-            </div>
-          </aside>
+        <div className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {leadStories.map((article) => (
+            <ArticleCard key={article.slug} article={article} variant="stack" />
+          ))}
         </div>
       </section>
 

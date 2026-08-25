@@ -12,6 +12,7 @@ import ArticleCover from "@/components/ArticleCover";
 import Ticker from "@/components/Ticker";
 import ProjectsRail from "@/components/ProjectsRail";
 import StartupsRail from "@/components/StartupsRail";
+import LocalNewsFinder from "@/components/LocalNewsFinder";
 
 export default function Home() {
   const featured = getArticle(FEATURED_SLUG)!;
@@ -26,6 +27,8 @@ export default function Home() {
   return (
     <div>
       <Ticker tone="amber" />
+
+      <LocalNewsFinder />
 
       <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-12">

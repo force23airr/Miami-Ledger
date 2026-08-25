@@ -6,6 +6,8 @@ import {
   type Category,
 } from "@/lib/articles";
 import ArticleCover from "@/components/ArticleCover";
+import LocalNewsFinder from "@/components/LocalNewsFinder";
+import { articlesForLocation, locationLabel } from "@/lib/local-news";
 
 const VALID: Category[] = ["local", "fintech", "engineering", "academics", "video"];
 
@@ -15,8 +17,10 @@ export function generateStaticParams() {
 
 export default async function CategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string }>;
+  searchParams: Promise<{ location?: string | string[] }>;
 }) {
   const { category } = await params;
   if (!VALID.includes(category as Category)) notFound();
@@ -27,7 +31,13 @@ export default async function CategoryPage({
   // Video desk gets a different layout
   if (cat === "video") return <VideoDesk />;
 
-  const items = articlesByCategory(cat);
+  const query = await searchParams;
+  const rawLocation = typeof query.location === "string" ? query.location : "";
+  const allItems = articlesByCategory(cat);
+  const matchingItems = cat === "local" && rawLocation
+    ? articlesForLocation(allItems, rawLocation)
+    : [];
+  const items = matchingItems.length > 0 ? matchingItems : allItems;
   const [lead, ...rest] = items;
 
   return (
@@ -40,10 +50,26 @@ export default async function CategoryPage({
           ← Miami Ledger
         </Link>
         <h1 className={`mt-3 font-editorial text-5xl font-bold tracking-tight sm:text-6xl ${meta.accent}`}>
-          {meta.label}
+          {cat === "local" && rawLocation ? locationLabel(rawLocation) : meta.label}
         </h1>
-        <p className="mt-2 max-w-2xl text-foreground/65">{meta.blurb}</p>
+        <p className="mt-2 max-w-2xl text-foreground/65">
+          {cat === "local" && rawLocation
+            ? `Local reporting for ${locationLabel(rawLocation)} and the communities around it.`
+            : meta.blurb}
+        </p>
       </div>
+
+      {cat === "local" && (
+        <div className="-mx-4 sm:-mx-6">
+          <LocalNewsFinder defaultLocation={rawLocation} openByDefault />
+        </div>
+      )}
+
+      {cat === "local" && rawLocation && matchingItems.length === 0 && (
+        <div className="mt-8 rounded-md border border-terminal-amber/25 bg-terminal-amber/5 px-4 py-3 text-sm text-foreground/70">
+          We don&apos;t have a story tagged to {locationLabel(rawLocation)} yet. Here&apos;s the latest from across Miami-Dade while the local desk builds out coverage.
+        </div>
+      )}
 
       {lead && (
         <Link

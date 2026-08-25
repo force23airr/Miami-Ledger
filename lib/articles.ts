@@ -10,6 +10,7 @@ export type Article = {
   readMinutes: number;
   hero?: string;
   tag?: string;
+  locations?: string[];
 };
 
 export const CATEGORY_META: Record<Category, { label: string; blurb: string; accent: string }> = {
@@ -50,6 +51,7 @@ export const ARTICLES: Article[] = [
     publishedAt: "2026-04-29",
     readMinutes: 11,
     tag: "Cover",
+    locations: ["Brickell", "33129", "33130", "33131"],
   },
   {
     slug: "stablecoin-corridor-miami-bogota",
@@ -87,6 +89,7 @@ export const ARTICLES: Article[] = [
     author: "C. Joseph",
     publishedAt: "2026-04-25",
     readMinutes: 7,
+    locations: ["Little Haiti", "33127"],
   },
   {
     slug: "miami-vc-q1",

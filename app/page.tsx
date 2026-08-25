@@ -1,12 +1,11 @@
 import Link from "next/link";
 import {
-  ARTICLES,
   CATEGORY_META,
   FEATURED_SLUG,
-  articlesByCategory,
-  getArticle,
-  latest,
+  articleHref,
+  hasPlacement,
 } from "@/lib/articles";
+import { getAllArticles } from "@/sanity/lib/articles";
 import ArticleCard from "@/components/ArticleCard";
 import ArticleCover from "@/components/ArticleCover";
 import Ticker from "@/components/Ticker";
@@ -14,9 +13,21 @@ import ProjectsRail from "@/components/ProjectsRail";
 import StartupsRail from "@/components/StartupsRail";
 import LocalNewsFinder from "@/components/LocalNewsFinder";
 
-export default function Home() {
-  const featured = getArticle(FEATURED_SLUG)!;
-  const recent = latest(7).filter((a) => a.slug !== FEATURED_SLUG).slice(0, 5);
+export default async function Home() {
+  const articles = await getAllArticles();
+  const featured = articles.find((article) => hasPlacement(article, "homepageFeatured"))
+    ?? articles.find((article) => article.source !== "cms" && article.tag?.toLowerCase() === "cover")
+    ?? articles.find((article) => article.slug === FEATURED_SLUG)
+    ?? articles[0];
+  const recent = articles
+    .filter((article) =>
+      article.slug !== featured.slug &&
+      (article.source !== "cms" || hasPlacement(article, "homepageLatest")),
+    )
+    .slice(0, 5);
+  const tickerHeadlines = articles
+    .filter((article) => hasPlacement(article, "ticker"))
+    .map((article) => `${article.category.toUpperCase()} — ${article.title}`);
   const beats: ("local" | "fintech" | "engineering" | "academics")[] = [
     "local",
     "fintech",
@@ -26,17 +37,23 @@ export default function Home() {
 
   return (
     <div>
-      <Ticker tone="amber" />
+      <Ticker tone="amber" headlines={tickerHeadlines} />
 
       <LocalNewsFinder />
 
       <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-12">
           <Link
-            href={`/${featured.category}#${featured.slug}`}
+            href={articleHref(featured)}
             className="group relative col-span-12 block lg:col-span-8"
           >
-            <ArticleCover category={featured.category} size="xl" label={featured.tag ?? "Cover Story"} />
+            <ArticleCover
+              category={featured.category}
+              size="xl"
+              label={featured.tag ?? "Cover Story"}
+              imageUrl={featured.coverImageUrl}
+              imageAlt={featured.coverImageAlt}
+            />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-6 sm:p-8">
               <div className="mb-2 flex items-center gap-3 font-terminal text-[11px] uppercase tracking-widest text-white/70">
                 <span className="rounded-sm bg-accent px-1.5 py-0.5 text-ink">{featured.tag ?? "Cover"}</span>
@@ -116,7 +133,7 @@ export default function Home() {
                 What&apos;s Going On
               </h2>
               <p className="mt-3 max-w-md text-foreground/70">
-                A weekly drop. Honest takes on Miami, peptides, training, and
+                A weekly drop. Honest takes on Miami, training, culture, and
                 the culture — straight from me, no filter.
               </p>
             </div>
@@ -140,7 +157,7 @@ export default function Home() {
                 Shop the Ledger
               </h2>
               <p className="mt-3 max-w-md text-foreground/70">
-                Research-grade peptides, supplements, and Ledger gear. Direct
+                Supplements, Ledger gear, and subscriber releases. Direct
                 from us. Subscribers get half off everything.
               </p>
             </div>
@@ -160,7 +177,12 @@ export default function Home() {
 
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
         {beats.map((beat) => {
-          const items = articlesByCategory(beat).slice(0, 3);
+          const items = articles
+            .filter((article) =>
+              article.category === beat &&
+              (article.source !== "cms" || hasPlacement(article, "homepageSection")),
+            )
+            .slice(0, 3);
           if (items.length === 0) return null;
           const meta = CATEGORY_META[beat];
           return (
@@ -246,7 +268,7 @@ export default function Home() {
 
       <section className="mx-auto mt-16 grid max-w-7xl grid-cols-2 gap-px overflow-hidden rounded-md border border-white/10 bg-white/5 md:grid-cols-4">
         {[
-          ["Stories filed", String(ARTICLES.length)],
+          ["Stories filed", String(articles.length)],
           ["Active beats", "4"],
           ["Hours of video", "37"],
           ["Tips received", "212"],

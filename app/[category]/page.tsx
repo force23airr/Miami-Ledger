@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   CATEGORY_META,
-  articlesByCategory,
+  articleHref,
+  hasPlacement,
+  type Article,
   type Category,
 } from "@/lib/articles";
 import ArticleCover from "@/components/ArticleCover";
 import LocalNewsFinder from "@/components/LocalNewsFinder";
 import { articlesForLocation, locationLabel } from "@/lib/local-news";
+import { getAllArticles } from "@/sanity/lib/articles";
 
 const VALID: Category[] = ["local", "fintech", "engineering", "academics", "video"];
 
@@ -27,13 +30,19 @@ export default async function CategoryPage({
 
   const cat = category as Category;
   const meta = CATEGORY_META[cat];
+  const allArticles = await getAllArticles();
 
   // Video desk gets a different layout
-  if (cat === "video") return <VideoDesk />;
+  if (cat === "video") {
+    const videoArticles = allArticles.filter(
+      (article) => article.category === "video" || hasPlacement(article, "video"),
+    );
+    return <VideoDesk articles={videoArticles} />;
+  }
 
   const query = await searchParams;
   const rawLocation = typeof query.location === "string" ? query.location : "";
-  const allItems = articlesByCategory(cat);
+  const allItems = allArticles.filter((article) => article.category === cat);
   const matchingItems = cat === "local" && rawLocation
     ? articlesForLocation(allItems, rawLocation)
     : [];
@@ -73,11 +82,17 @@ export default async function CategoryPage({
 
       {lead && (
         <Link
-          href={`#${lead.slug}`}
+          href={articleHref(lead)}
           id={lead.slug}
           className="group mt-10 grid gap-8 lg:grid-cols-2"
         >
-          <ArticleCover category={cat} size="lg" label={lead.tag ?? "Lede"} />
+          <ArticleCover
+            category={cat}
+            size="lg"
+            label={lead.tag ?? "Lede"}
+            imageUrl={lead.coverImageUrl}
+            imageAlt={lead.coverImageAlt}
+          />
           <div className="self-center">
             <div className="font-terminal text-[10px] uppercase tracking-widest text-foreground/40">
               {lead.tag ?? "Lede"} · {lead.readMinutes} min · {lead.author}
@@ -92,21 +107,26 @@ export default async function CategoryPage({
 
       <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
         {rest.map((a) => (
-          <article key={a.slug} id={a.slug}>
-            <ArticleCover category={cat} size="md" />
+          <Link key={a.slug} href={articleHref(a)} className="group block">
+            <ArticleCover
+              category={cat}
+              size="md"
+              imageUrl={a.coverImageUrl}
+              imageAlt={a.coverImageAlt}
+            />
             <div className="mt-3 font-terminal text-[10px] uppercase tracking-widest text-foreground/40">
               {a.author} · {a.readMinutes} min
             </div>
-            <h3 className="mt-1 font-editorial text-xl leading-snug">{a.title}</h3>
+            <h3 className="mt-1 font-editorial text-xl leading-snug transition group-hover:text-accent">{a.title}</h3>
             <p className="mt-1.5 text-sm text-foreground/60">{a.dek}</p>
-          </article>
+          </Link>
         ))}
       </div>
     </div>
   );
 }
 
-function VideoDesk() {
+function VideoDesk({ articles }: { articles: Article[] }) {
   const meta = CATEGORY_META.video;
   const reels = [
     { title: "Brickell skyline: a balance sheet", duration: "11:24", host: "A. Fernandez" },
@@ -131,6 +151,30 @@ function VideoDesk() {
         </h1>
         <p className="mt-2 max-w-2xl text-foreground/65">{meta.blurb}</p>
       </div>
+
+      {articles.length > 0 && (
+        <section className="mt-10 border-b border-white/10 pb-10">
+          <div className="mb-4 font-terminal text-[11px] uppercase tracking-widest text-terminal-amber">
+            From the newsroom
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {articles.slice(0, 6).map((article) => (
+              <Link key={article.slug} href={articleHref(article)} className="group block">
+                <ArticleCover
+                  category={article.category}
+                  size="md"
+                  imageUrl={article.coverImageUrl}
+                  imageAlt={article.coverImageAlt}
+                />
+                <h2 className="mt-3 font-editorial text-xl leading-snug transition group-hover:text-terminal-amber">
+                  {article.title}
+                </h2>
+                <p className="mt-1 line-clamp-2 text-sm text-foreground/55">{article.dek}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-10 grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2">

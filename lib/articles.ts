@@ -1,4 +1,25 @@
-export type Category = "local" | "fintech" | "engineering" | "academics" | "video";
+export const ARTICLE_CATEGORIES = [
+  "local",
+  "fintech",
+  "engineering",
+  "academics",
+  "video",
+  "facts",
+  "blueprints",
+  "records",
+  "startups",
+  "projects",
+  "whats-going-on",
+] as const;
+
+export type Category = (typeof ARTICLE_CATEGORIES)[number];
+export type ArticlePlacement =
+  | "homepageFeatured"
+  | "homepageLatest"
+  | "homepageSection"
+  | "ticker"
+  | "terminal"
+  | "video";
 
 export type Article = {
   slug: string;
@@ -11,7 +32,33 @@ export type Article = {
   hero?: string;
   tag?: string;
   locations?: string[];
+  body?: Array<{ _type: string; _key?: string; [key: string]: unknown }>;
+  coverImageUrl?: string;
+  coverImageAlt?: string;
+  sources?: Array<{ label: string; url: string }>;
+  placements?: ArticlePlacement[];
+  source?: "cms";
 };
+
+const CUSTOM_SCREEN_CATEGORIES = new Set<Category>([
+  "facts",
+  "blueprints",
+  "records",
+  "startups",
+  "projects",
+  "whats-going-on",
+]);
+
+export function articleHref(article: Article) {
+  if (CUSTOM_SCREEN_CATEGORIES.has(article.category)) {
+    return `/articles/${article.category}/${article.slug}`;
+  }
+  return `/${article.category}/${article.slug}`;
+}
+
+export function hasPlacement(article: Article, placement: ArticlePlacement) {
+  return article.placements?.includes(placement) ?? false;
+}
 
 export const CATEGORY_META: Record<Category, { label: string; blurb: string; accent: string }> = {
   local: {
@@ -37,6 +84,36 @@ export const CATEGORY_META: Record<Category, { label: string; blurb: string; acc
   video: {
     label: "Video",
     blurb: "Documentaries, interviews, and dispatches from the Ledger's video desk.",
+    accent: "text-terminal-amber",
+  },
+  facts: {
+    label: "Facts",
+    blurb: "Clear answers, useful context, and the facts behind the questions.",
+    accent: "text-terminal-amber",
+  },
+  blueprints: {
+    label: "Blueprints",
+    blurb: "Ideas and proposals for building the Miami of tomorrow.",
+    accent: "text-terminal-cyan",
+  },
+  records: {
+    label: "Records",
+    blurb: "Public records, primary documents, and data made understandable.",
+    accent: "text-terminal-green",
+  },
+  startups: {
+    label: "Startups",
+    blurb: "The companies, founders, and new ventures being built in Miami.",
+    accent: "text-accent",
+  },
+  projects: {
+    label: "Projects",
+    blurb: "Apps, tools, research, and experiments built by the Ledger.",
+    accent: "text-accent-soft",
+  },
+  "whats-going-on": {
+    label: "What's Going On",
+    blurb: "Conversations and dispatches about Miami, culture, and what matters now.",
     accent: "text-terminal-amber",
   },
 };

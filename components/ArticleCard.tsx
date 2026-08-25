@@ -1,7 +1,7 @@
 import Link from "next/link";
 import ArticleCover from "./ArticleCover";
 import ProfitAnglesButton from "./ProfitAnglesButton";
-import type { Article } from "@/lib/articles";
+import { articleHref, type Article } from "@/lib/articles";
 
 export default function ArticleCard({
   article,
@@ -14,10 +14,10 @@ export default function ArticleCard({
     return (
       <div className="group relative">
         <Link
-          href={`/${article.category}#${article.slug}`}
+          href={articleHref(article)}
           className="block"
         >
-          <ArticleCover category={article.category} size="md" />
+          <ArticleCover category={article.category} size="md" imageUrl={article.coverImageUrl} imageAlt={article.coverImageAlt} />
           <div className="mt-3 font-terminal text-[10px] uppercase tracking-widest text-foreground/40">
             {article.category} · {article.readMinutes} min
           </div>
@@ -41,11 +41,11 @@ export default function ArticleCard({
   return (
     <div className="group relative border-b border-white/5 py-4 first:pt-0">
       <Link
-        href={`/${article.category}#${article.slug}`}
+        href={articleHref(article)}
         className="flex gap-4"
       >
         <div className="w-28 shrink-0">
-          <ArticleCover category={article.category} size="sm" />
+          <ArticleCover category={article.category} size="sm" imageUrl={article.coverImageUrl} imageAlt={article.coverImageAlt} />
         </div>
         <div className="min-w-0">
           <div className="font-terminal text-[10px] uppercase tracking-widest text-foreground/40">

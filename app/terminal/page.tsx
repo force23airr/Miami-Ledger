@@ -5,13 +5,44 @@ import BeatPanel from "@/components/terminal/BeatPanel";
 import MarketPanel from "@/components/terminal/MarketPanel";
 import HeadlinePulse from "@/components/terminal/HeadlinePulse";
 import GlobeFeed from "@/components/terminal/GlobeFeed";
-import { FEED_BY_BEAT } from "@/lib/feed";
+import { FEED_BY_BEAT, type FeedItem } from "@/lib/feed";
+import { hasPlacement, type Category } from "@/lib/articles";
+import { getAllArticles } from "@/sanity/lib/articles";
 
 export const metadata = {
   title: "The Ledger Terminal — Stay in the loop",
 };
 
-export default function TerminalPage() {
+const BEAT_BY_CATEGORY: Partial<Record<Category, FeedItem["beat"]>> = {
+  local: "LCL",
+  fintech: "FIN",
+  engineering: "ENG",
+  academics: "ACA",
+};
+
+export default async function TerminalPage() {
+  const articles = await getAllArticles();
+  const terminalArticles = articles.filter((article) => hasPlacement(article, "terminal"));
+  const tickerHeadlines = articles
+    .filter((article) => hasPlacement(article, "ticker"))
+    .map((article) => `${article.category.toUpperCase()} — ${article.title}`);
+  const cmsFeed = terminalArticles.reduce<Partial<Record<FeedItem["beat"], FeedItem[]>>>(
+    (feeds, article) => {
+      const beat = BEAT_BY_CATEGORY[article.category];
+      if (!beat || beat === "WIRE") return feeds;
+      const item: FeedItem = {
+        id: `cms-${article.slug}`,
+        time: new Date(article.publishedAt).toISOString().slice(11, 19),
+        beat,
+        text: article.title,
+        priority: article.tag?.toLowerCase() === "breaking" ? "BREAKING" : undefined,
+      };
+      feeds[beat] = [...(feeds[beat] ?? []), item];
+      return feeds;
+    },
+    {},
+  );
+
   return (
     <div className="terminal-scanlines relative min-h-screen overflow-hidden bg-terminal-bg text-foreground">
       <div className="terminal-grid-bg absolute inset-0 opacity-60" />
@@ -40,13 +71,13 @@ export default function TerminalPage() {
 
         {/* Wire */}
         <div className="mt-3">
-          <Ticker tone="green" />
+          <Ticker tone="green" headlines={tickerHeadlines} />
         </div>
 
         {/* Pulse + video */}
         <div className="mt-4 grid gap-4 lg:grid-cols-12">
           <div className="lg:col-span-8">
-            <HeadlinePulse />
+            <HeadlinePulse headlines={tickerHeadlines} />
           </div>
           <div className="lg:col-span-4">
             <div className="relative aspect-video overflow-hidden rounded-md border border-white/10 bg-black">
@@ -82,16 +113,16 @@ export default function TerminalPage() {
         {/* Beats grid */}
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="h-[420px]">
-            <BeatPanel beat="LCL" initial={FEED_BY_BEAT.LCL} />
+            <BeatPanel beat="LCL" initial={[...(cmsFeed.LCL ?? []), ...FEED_BY_BEAT.LCL]} />
           </div>
           <div className="h-[420px]">
-            <BeatPanel beat="FIN" initial={FEED_BY_BEAT.FIN} />
+            <BeatPanel beat="FIN" initial={[...(cmsFeed.FIN ?? []), ...FEED_BY_BEAT.FIN]} />
           </div>
           <div className="h-[420px]">
-            <BeatPanel beat="ENG" initial={FEED_BY_BEAT.ENG} />
+            <BeatPanel beat="ENG" initial={[...(cmsFeed.ENG ?? []), ...FEED_BY_BEAT.ENG]} />
           </div>
           <div className="h-[420px]">
-            <BeatPanel beat="ACA" initial={FEED_BY_BEAT.ACA} />
+            <BeatPanel beat="ACA" initial={[...(cmsFeed.ACA ?? []), ...FEED_BY_BEAT.ACA]} />
           </div>
         </div>
 

@@ -10,11 +10,10 @@ import {
 export const metadata = {
   title: "Store — Miami Ledger",
   description:
-    "Shop Miami Ledger gear, research peptides, supplements, and subscriber-only releases. Subscribers get 50% off everything.",
+    "Shop Miami Ledger gear, supplements, and subscriber-only releases. Subscribers get 50% off everything.",
 };
 
 const categories: Product["category"][] = [
-  "Peptides",
   "Supplements",
   "Gear",
   "Print",
@@ -31,8 +30,7 @@ export default function StorePage() {
           Direct from us to you.
         </h1>
         <p className="mt-3 max-w-2xl text-foreground/70">
-          Research-grade peptides, supplements, gear, and subscriber-only
-          releases. No middlemen.
+          Supplements, gear, and subscriber-only releases. No middlemen.
         </p>
       </header>
 
@@ -232,12 +230,6 @@ export default function StorePage() {
         );
       })}
 
-      <footer className="mt-20 border-t border-white/10 pt-8 font-terminal text-[11px] leading-6 uppercase tracking-widest text-foreground/40">
-        Research peptides are sold for laboratory and research purposes only.
-        Not intended for human consumption, diagnosis, or treatment of any
-        condition. By purchasing you confirm you are 21+ and a qualified
-        researcher.
-      </footer>
     </div>
   );
 }

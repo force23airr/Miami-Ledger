@@ -1,7 +1,14 @@
 import { TICKER_ITEMS } from "@/lib/feed";
 
-export default function Ticker({ tone = "amber" }: { tone?: "amber" | "green" }) {
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
+export default function Ticker({
+  tone = "amber",
+  headlines = [],
+}: {
+  tone?: "amber" | "green";
+  headlines?: string[];
+}) {
+  const feed = headlines.length > 0 ? [...headlines, ...TICKER_ITEMS] : TICKER_ITEMS;
+  const items = [...feed, ...feed];
   const color =
     tone === "amber"
       ? "text-terminal-amber border-terminal-amber/30"

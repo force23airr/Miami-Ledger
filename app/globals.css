@@ -114,6 +114,32 @@ body {
   text-shadow: 0 0 8px rgba(0, 255, 156, 0.45);
 }
 
+.article-body > * + * {
+  margin-top: 1.35rem;
+}
+
+.article-body h2,
+.article-body h3 {
+  margin-top: 2.5rem;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--foreground);
+}
+
+.article-body h2 { font-size: 1.75rem; }
+.article-body h3 { font-size: 1.35rem; }
+.article-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1.25rem;
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 1.2rem;
+}
+.article-body a { color: var(--terminal-cyan); text-decoration: underline; }
+.article-body ul { list-style: disc; padding-left: 1.5rem; }
+.article-body ol { list-style: decimal; padding-left: 1.5rem; }
+
 /* Scrollbar - editorial */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }

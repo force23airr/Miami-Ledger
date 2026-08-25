@@ -4,7 +4,7 @@ export type Product = {
   price: number;
   tagline: string;
   description: string;
-  category: "Peptides" | "Supplements" | "Gear" | "Print";
+  category: "Supplements" | "Gear" | "Print";
   audience: "Viewer" | "Subscriber" | "Everyone";
   inStock: boolean;
   researchOnly?: boolean;
@@ -14,54 +14,6 @@ export const SUBSCRIBER_DISCOUNT_PERCENT = 50;
 export const SUBSCRIBER_PROMO_CODE = "LEDGER50";
 
 export const products: Product[] = [
-  {
-    slug: "bpc-157-5mg",
-    name: "BPC-157 — 5mg",
-    price: 49,
-    tagline: "Research-grade peptide, 5mg vial.",
-    description:
-      "5mg lyophilized BPC-157 in a single sealed vial. Third-party tested, COA included. Shipped cold-pack with overnight option at checkout.",
-    category: "Peptides",
-    audience: "Everyone",
-    inStock: true,
-    researchOnly: true,
-  },
-  {
-    slug: "tb-500-5mg",
-    name: "TB-500 — 5mg",
-    price: 65,
-    tagline: "Research-grade peptide, 5mg vial.",
-    description:
-      "5mg lyophilized TB-500 in a single sealed vial. Independent purity testing on every batch, certificate of analysis provided.",
-    category: "Peptides",
-    audience: "Everyone",
-    inStock: true,
-    researchOnly: true,
-  },
-  {
-    slug: "ipamorelin-5mg",
-    name: "Ipamorelin — 5mg",
-    price: 55,
-    tagline: "Research-grade peptide, 5mg vial.",
-    description:
-      "5mg lyophilized Ipamorelin. >99% purity verified by HPLC. Sealed, tamper-evident packaging.",
-    category: "Peptides",
-    audience: "Everyone",
-    inStock: true,
-    researchOnly: true,
-  },
-  {
-    slug: "bacteriostatic-water",
-    name: "Bacteriostatic Water — 30ml",
-    price: 12,
-    tagline: "0.9% benzyl alcohol. For reconstitution.",
-    description:
-      "30ml bacteriostatic water with 0.9% benzyl alcohol. Sterile, sealed vial. Required companion for reconstituting lyophilized peptides.",
-    category: "Peptides",
-    audience: "Everyone",
-    inStock: true,
-    researchOnly: true,
-  },
   {
     slug: "creatine-monohydrate",
     name: "Creatine Monohydrate — 500g",

@@ -3,7 +3,6 @@ import "server-only";
 import { defineQuery } from "next-sanity";
 import {
   ARTICLE_CATEGORIES,
-  ARTICLES,
   type Article,
   type Category,
 } from "@/lib/articles";
@@ -69,17 +68,13 @@ export async function getCmsArticles(): Promise<Article[]> {
     );
     return items.filter(isArticle);
   } catch (error) {
-    console.warn("[sanity] Using bundled article fallback:", error);
+    console.warn("[sanity] Could not load published articles:", error);
     return [];
   }
 }
 
 export async function getAllArticles(): Promise<Article[]> {
-  const cmsArticles = await getCmsArticles();
-  const cmsSlugs = new Set(cmsArticles.map((article) => article.slug));
-
-  return [...cmsArticles, ...ARTICLES.filter((article) => !cmsSlugs.has(article.slug))]
-    .sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
+  return getCmsArticles();
 }
 
 export async function getArticleBySlug(
@@ -94,10 +89,8 @@ export async function getArticleBySlug(
     );
     if (isArticle(item)) return item;
   } catch (error) {
-    console.warn("[sanity] Article query failed; checking bundled content:", error);
+    console.warn("[sanity] Article query failed:", error);
   }
 
-  return ARTICLES.find(
-    (article) => article.category === category && article.slug === slug,
-  );
+  return undefined;
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   CATEGORY_META,
-  FEATURED_SLUG,
   articleHref,
   hasPlacement,
 } from "@/lib/articles";
@@ -14,9 +13,36 @@ import LocalNewsFinder from "@/components/LocalNewsFinder";
 
 export default async function Home() {
   const articles = await getAllArticles();
+  if (articles.length === 0) {
+    return (
+      <div>
+        <Ticker tone="amber" headlines={[]} />
+        <LocalNewsFinder />
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <div className="rounded-2xl border border-accent/25 bg-white/[0.02] p-8 text-center sm:p-12">
+            <div className="font-terminal text-[10px] uppercase tracking-[0.24em] text-accent">
+              Miami Ledger newsroom
+            </div>
+            <h1 className="mt-3 font-editorial text-4xl font-bold tracking-tight">
+              The next story starts here.
+            </h1>
+            <p className="mx-auto mt-3 max-w-xl text-foreground/60">
+              No stories are published yet. Open the Studio to file the first
+              verified report.
+            </p>
+            <Link
+              href="/studio"
+              className="mt-6 inline-flex rounded-md bg-accent px-5 py-3 font-terminal text-xs font-bold uppercase tracking-widest text-ink transition hover:bg-accent-soft"
+            >
+              Open the Studio →
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
   const featured = articles.find((article) => hasPlacement(article, "homepageFeatured"))
     ?? articles.find((article) => article.source !== "cms" && article.tag?.toLowerCase() === "cover")
-    ?? articles.find((article) => article.slug === FEATURED_SLUG)
     ?? articles[0];
   const recent = articles
     .filter((article) =>
